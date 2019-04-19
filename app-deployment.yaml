@@ -1,0 +1,63 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ada-challenge-backend
+  labels:
+    app: ada-challenge
+spec:
+  ports:
+    - port: 8080
+  selector:
+    app: ada-challenge
+    tier: backend
+  type: LoadBalancer
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ada-challenge-backend
+  labels:
+    app: ada-challenge
+spec:
+  selector:
+    matchLabels:
+      app: ada-challenge
+      tier: backend
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: ada-challenge
+        tier: backend
+    spec:
+      containers:
+      - image: backend-challenge:latest
+        name: backend-challenge
+        imagePullPolicy: "IfNotPresent" #use local image for dev
+        env:
+        - name: DB_HOST
+          value: ada-challenge-postgres
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-pass
+              key: password
+        ports:
+        - containerPort: 8080
+          name: backend
+        readinessProbe:
+          httpGet:
+            path: /conversations/health
+            port: 8080
+          initialDelaySeconds: 2
+          timeoutSeconds: 1
+          periodSeconds: 2
+        livenessProbe:
+          httpGet:
+            path: /conversations/health
+            port: 8080
+          initialDelaySeconds: 30
+          timeoutSeconds: 5
+          periodSeconds: 15
+

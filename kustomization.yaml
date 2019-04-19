@@ -1,0 +1,7 @@
+secretGenerator:
+- name: postgres-pass
+  literals:
+  - password=here_for_convenient_setup_really_would_be_managed_externally_in_prod
+resources:
+ - postgres-deployment.yaml
+ - app-deployment.yaml

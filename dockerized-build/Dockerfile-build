@@ -1,0 +1,10 @@
+FROM hseeberger/scala-sbt:8u181_2.12.6_1.2.1 AS build
+COPY . /code
+WORKDIR /code
+RUN sbt assembly
+
+FROM openjdk:8-jre-alpine
+EXPOSE 8080
+COPY --from=build /code/run_app.sh /code/target/scala-2.11/ada-backend-challenge-assembly-0.1.0-SNAPSHOT.jar ./
+ENTRYPOINT ["./run_app.sh"]
+

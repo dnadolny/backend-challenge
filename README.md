@@ -1,73 +1,62 @@
-# Ada Support Backend Coding Challenge
-
-Hello there! :wave:
-
-This is our challenge for potential new backend & infrastructure developer team members. We'd like to see how you tackle an open-ended project in Ada's domain (chat). We don't mind what language you use to complete the challenge. Feel free to try something new, or to use technology that you're already comfortable with. We're partial to Python here at Ada, but please feel free to use whatever you'd like :smile:
-
-## Your Quest
-
-We'd like you to design and build a simple web service responsible for two things:
-
-1. Accept incoming chat messages over HTTP
-2. Serve up conversation history over HTTP
-
-When you're done, please open a pull request in this repository and we'll take a look! Expect us to give some feedback and ask questions to better understand your thought process.
-
-### Important Notes
-
-- Please don't spend too long on this! It shouldn't take more than 3 hours with a familiar technology stack.
-- Please reach out to anson@ada.support and shihan@ada.support if you have any questions whatsoever! This should be fun and not stressful.
-- We intentionally left things somewhat ambiguous so that you can be creative. If you'd rather have things specified closely, we can give you more guidance. Just ask!
-- Feel free to use any technology and programming language that you'd like
+# Ada Backend Challenge #
 
 ## Specifications
 
-Your solution should start an HTTP service on any port you'd like. Please include instructions on how to start your service (so that we can test the functionality!)
+See the [original specifications](https://github.com/AdaSupport/backend-challenge/blob/33e3ea5435957b7614818c209a6935dac82d7628/README.md), rooughly: an HTTP API that saves messages grouped by a `conversation_id` and can list them.
 
-### `/messages/` Resource
+Additional requirements:
+ * Dockerize the application
+ * Create a Kubernetes deployment for the application and instructions on how to deploy and access on DockerDesktop-Kubernetes or MiniKube
 
-The `/messages/` resource accepts HTTP POST actions to create new messages in the conversation. A typical message resource has the format of:
+## Build & Run
 
-```javascript
-{
-    "sender": "anson",
-    "conversation_id": "1234",
-    "message": "I'm a teapot"
-}
+Requires:
+ * [sbt](https://www.scala-sbt.org/download.html) (you can download the tarball and add `bin` to your path, or even invoke it directly with `/path/to/sbt`)
+ * [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
+ * [minikube](https://kubernetes.io/docs/setup/minikube/)
+
+Setup:
+```sh
+minikube start #once
+eval $(minikube docker-env) #once per terminal
 ```
 
-Here, `"sender"` is a string username, `"conversation_id"` is a unique identifier for a particular conversation, and `"message"` is a string message to be logged to a conversation.
+To build and run:
 
-### `/conversations/<conversation_id>` Resource
-
-The `/conversations/<conversation_id>` resource accepts an HTTP GET action and returns a list of conversation messages. A typical conversation as the format of:
-
-```javascript
-{
-    "id": "1234",
-    "messages": [
-        {
-            "sender": "anson",
-            "message": "I'm a teapot",
-            "created": "2018-01-17T04:50:14.883Z"
-        },
-        {
-            "sender": "david",
-            "message": "Short and stout",
-            "created": "2018-01-17T04:52:17.201Z"
-        }
-    ]
-}
+```sh
+sbt assembly
+docker build -t backend-challenge .
+kubectl apply -k .
+```
+Get the url to hit:
+```sh
+minikube service ada-challenge-backend --url
 ```
 
-Here, a conversation with two messages is presented.
+### Alternative to sbt
 
-## Clarifications
-- Conversation IDs can follow any format you choose, as long as they are unique!
-- Conversations should be persisted, but how you persist them is up to you :smile:
-- You can assume that the entities sending incoming chat messages are authenticated and trustworthy (authentication is outside of the scope of this project)
-- Don't worry about pagination on the conversations
-- Don't worry about a list resource for conversations or messages
-- We recommend validating incoming data
-- Tests are always a good idea
-- Please give us instructions on how to run your service when you open your Pull Request
+A dockerized build is available in `dockerized-build/Dockerfile`, replace `Dockerfile` with that to use it. It avoids the need to download sbt, but the price is a much slower build process.
+
+
+## Try it out
+
+```sh
+ADA_URL="$(minikube service ada-challenge-backend --url)"
+
+curl "$ADA_URL/conversations/12345"
+# should get {"id":"12345","messages":[]}
+
+#save a new message
+curl -d '{"sender": "the_sender", "message": "some_message", "conversation_id": "12345"}' -H "Content-Type: application/json" -X POST "$ADA_URL/messages/"
+
+curl "$ADA_URL/conversations/12345"
+# now we get {"id":"12345","messages":[{"sender":"the_sender","message":"some_message","created":"2019-04-19T12:44:45.268Z"}]} 
+```
+
+
+## Operating
+
+* `kubectl get pods --selector=app=ada-challenge` - list pods, there is a readiness check (and liveness check for the app) so once it shows ready it should be able to serve requests
+* `kubectl logs --selector=app=ada-challenge,tier=backend` - show log for backend server
+* `kubectl delete deploy/ada-challenge-backend` - kill backend server so you can rebuild and run `kubectl apply -k .` again
+
